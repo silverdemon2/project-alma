@@ -21,7 +21,7 @@ class TemplateEstimator(BaseEstimator):
 
     Examples
     --------
-    >>> from skltemplate import TemplateEstimator
+    >>> from skl_sampling_bayesian_transformer import TemplateEstimator
     >>> import numpy as np
     >>> X = np.arange(100).reshape(100, 1)
     >>> y = np.zeros((100, ))
