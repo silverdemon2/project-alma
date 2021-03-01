@@ -3,8 +3,7 @@ import pandas as pd
 from category_encoders import OrdinalEncoder
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
-from skl_sampling_bayesian_transformer.sampling_bayesian_encoder import SamplingBayesianEncoder, EncoderWrapper, \
-    TaskType
+from skl_sampling_bayesian_transformer.sampling_bayesian_encoder import SamplingBayesianEncoder, EncoderWrapper
 import skl_sampling_bayesian_transformer.tests.helper as th
 
 np_X = th.create_array(n_rows=100)
@@ -22,14 +21,14 @@ y_t = pd.DataFrame(np_y_t)
 
 
 def test_classification_numeric():
-    enc = SamplingBayesianEncoder(verbose=1, task=TaskType.BINARY_CLASSIFICATION)
+    enc = SamplingBayesianEncoder(verbose=1, task='binary classification')
     enc.fit(X, y)
     th.verify_numeric(enc.transform(X_t))
     th.verify_numeric(enc.transform(X_t, y_t))
 
 
 def test_regression_numeric():
-    enc = SamplingBayesianEncoder(verbose=1, task=TaskType.REGRESSION)
+    enc = SamplingBayesianEncoder(verbose=1, task='regression')
     enc.fit(X, y_reg)
     th.verify_numeric(enc.transform(X_t))
     th.verify_numeric(enc.transform(X_t, y_t_reg))
@@ -39,7 +38,7 @@ def test_regression():
     enc = SamplingBayesianEncoder(verbose=1, n_draws=2,
                                   cols=['unique_str', 'invariant', 'underscore', 'none', 'extra', 321,
                                         'categorical', 'na_categorical', 'categorical_int'],
-                                  task=TaskType.REGRESSION)
+                                  task='regression')
     X_le = OrdinalEncoder().fit_transform(X).fillna(0)
     inf_values = np.isinf(X_le).sum(axis=1) == 0
     X_le = X_le[inf_values]
@@ -48,14 +47,14 @@ def test_regression():
     X_new = enc.transform(X_le)
     assert len(X_le.columns) + len(enc.cols) == len(X_new.columns)
     df_diff = X_new.categorical_encoded_0 - X_new.categorical_encoded_1
-    assert (df_diff.max() - df_diff.min() > 0, "Both encoded columns contain the same values")
+    assert df_diff.max() - df_diff.min() > 0, "Both encoded columns contain the same values"
 
 
 def test_regression_mean():
     enc = SamplingBayesianEncoder(verbose=1, n_draws=2,
                                   cols=['unique_str', 'invariant', 'underscore', 'none', 'extra', 321,
                                         'categorical', 'na_categorical', 'categorical_int'],
-                                  mapper='mean', task=TaskType.REGRESSION)
+                                  mapper='mean', task='regression')
     X_le = OrdinalEncoder().fit_transform(X).fillna(0)
     inf_values = np.isinf(X_le).sum(axis=1) == 0
     X_le = X_le[inf_values]
@@ -65,16 +64,14 @@ def test_regression_mean():
     assert len(X_le.columns) == len(X_new.columns)
 
 
-@staticmethod
 def first_element(x):
     return (x[1],)
-
 
 def test_regression_custom_mapper():
     enc = SamplingBayesianEncoder(verbose=1, n_draws=2,
                                   cols=['unique_str', 'invariant', 'underscore', 'none', 'extra', 321,
                                         'categorical', 'na_categorical', 'categorical_int'],
-                                  mapper=first_element, task=TaskType.REGRESSION)
+                                  mapper=first_element, task='regression')
     X_le = OrdinalEncoder().fit_transform(X).fillna(0)
     inf_values = np.isinf(X_le).sum(axis=1) == 0
     X_le = X_le[inf_values]
@@ -88,7 +85,7 @@ def test_binary_classification():
     enc = SamplingBayesianEncoder(verbose=1, n_draws=2,
                                   cols=['unique_str', 'invariant', 'underscore', 'none', 'extra', 321,
                                         'categorical', 'na_categorical', 'categorical_int'],
-                                  task=TaskType.BINARY_CLASSIFICATION)
+                                  task='binary classification')
     X_le = OrdinalEncoder().fit_transform(X).fillna(0)
     inf_values = np.isinf(X_le).sum(axis=1) == 0
     X_le = X_le[inf_values]
@@ -102,7 +99,7 @@ def test_binary_classification_mean():
     enc = SamplingBayesianEncoder(verbose=1, n_draws=2,
                                   cols=['unique_str', 'invariant', 'underscore', 'none', 'extra', 321,
                                         'categorical', 'na_categorical', 'categorical_int'],
-                                  task=TaskType.BINARY_CLASSIFICATION, mapper='mean')
+                                  task='binary classification', mapper='mean')
     X_le = OrdinalEncoder().fit_transform(X).fillna(0)
     inf_values = np.isinf(X_le).sum(axis=1) == 0
     X_le = X_le[inf_values]
@@ -111,18 +108,18 @@ def test_binary_classification_mean():
     X_new = enc.transform(X_le)
     assert len(X_le.columns) == len(X_new.columns)
     # Now we need to make sure that there are no identical values.
-    check_contains_no_equal(X_new.categorical_encoded_0)
+    assert len(set(X_new.categorical_encoded_0.values)) == len(X_new.categorical_encoded_0.values)
 
 
 def test_binary_classification_mean_identity_same():
     enc_mean = SamplingBayesianEncoder(verbose=1, n_draws=2, random_state=578,
                                        cols=['unique_str', 'invariant', 'underscore', 'none', 'extra', 321,
                                              'categorical', 'na_categorical', 'categorical_int'],
-                                       task=TaskType.BINARY_CLASSIFICATION, mapper='mean')
+                                       task='binary classification', mapper='mean')
     enc_identity = SamplingBayesianEncoder(verbose=1, n_draws=2, random_state=578,
                                            cols=['unique_str', 'invariant', 'underscore', 'none', 'extra', 321,
                                                  'categorical', 'na_categorical', 'categorical_int'],
-                                           task=TaskType.BINARY_CLASSIFICATION, mapper='identity')
+                                           task='binary classification', mapper='identity')
 
     X_le = OrdinalEncoder().fit_transform(X).fillna(0)
     inf_values = np.isinf(X_le).sum(axis=1) == 0
@@ -139,7 +136,7 @@ def test_binary_classification_woe():
     enc = SamplingBayesianEncoder(verbose=1, n_draws=2,
                                   cols=['unique_str', 'invariant', 'underscore', 'none', 'extra', 321,
                                         'categorical', 'na_categorical', 'categorical_int'],
-                                  task=TaskType.BINARY_CLASSIFICATION, mapper='weight_of_evidence')
+                                  task='binary classification', mapper='weight_of_evidence')
     X_le = OrdinalEncoder().fit_transform(X).fillna(0)
     inf_values = np.isinf(X_le).sum(axis=1) == 0
     X_le = X_le[inf_values]
@@ -149,7 +146,6 @@ def test_binary_classification_woe():
     assert len(X_le.columns) == len(X_new.columns)
 
 
-@staticmethod
 def square(x):
     return (x[0], x[0] ** 2)
 
@@ -158,7 +154,7 @@ def test_binary_classification_custom():
     enc = SamplingBayesianEncoder(verbose=1, n_draws=2,
                                   cols=['unique_str', 'invariant', 'underscore', 'none', 'extra', 321,
                                         'categorical', 'na_categorical', 'categorical_int'],
-                                  task=TaskType.BINARY_CLASSIFICATION, mapper=square)
+                                  task='binary classification', mapper=square)
     X_le = OrdinalEncoder().fit_transform(X).fillna(0)
     inf_values = np.isinf(X_le).sum(axis=1) == 0
     X_le = X_le[inf_values]
@@ -172,7 +168,7 @@ def test_wrapper_classification():
     enc = SamplingBayesianEncoder(verbose=1, n_draws=2,
                                   cols=['unique_str', 'invariant', 'underscore', 'none', 'extra', 321,
                                         'categorical', 'na_categorical', 'categorical_int'],
-                                  task=TaskType.BINARY_CLASSIFICATION)
+                                  task='binary classification')
     classifier = RandomForestClassifier(n_estimators=10)
     wrapper_model = EncoderWrapper(enc, classifier)
     X_le = OrdinalEncoder().fit_transform(X).fillna(0)
@@ -190,15 +186,15 @@ def test_wrapper_regression():
     enc = SamplingBayesianEncoder(verbose=1, n_draws=2,
                                   cols=['unique_str', 'invariant', 'underscore', 'none', 'extra', 321,
                                         'categorical', 'na_categorical', 'categorical_int'],
-                                  task=TaskType.REGRESSION)
+                                  task='regression')
     classifier = RandomForestRegressor(n_estimators=10)
     wrapper_model = EncoderWrapper(enc, classifier)
     X_le = OrdinalEncoder().fit_transform(X).fillna(0)
     inf_values = np.isinf(X_le).sum(axis=1) == 0
     X_le = X_le[inf_values]
     y_le = y_reg[inf_values]
-    assert not(np.any(np.isnan(X_le)))
-    assert not(np.any(np.isinf(X_le)))
+    assert not (np.any(np.isnan(X_le)))
+    assert not (np.any(np.isinf(X_le)))
     wrapper_model.fit(X_le, y_le)
     preds = wrapper_model.predict(X_le)
     assert y_le.shape[0] == preds.shape[0]

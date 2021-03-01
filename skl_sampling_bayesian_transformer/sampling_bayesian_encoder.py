@@ -13,17 +13,12 @@ import multiprocessing as mp
 __author__ = 'Michael Larionov'
 # https://github.com/mlarionov/categorical-encoding/blob/sampling/category_encoders/sampling_bayesian.py
 
-class TaskType(Enum):
-    REGRESSION = 1
-    BINARY_CLASSIFICATION = 2
-    MULTICLASS_CLASSIFICATION = 3
+# class TaskType(Enum):
+#     REGRESSION = 1
+#     BINARY_CLASSIFICATION = 2
+#     MULTICLASS_CLASSIFICATION = 3
 
-    @staticmethod
-    def create_accumulator(task):
-        if task == TaskType.REGRESSION:
-            return NormalGammaAccumulator
-        elif task == TaskType.BINARY_CLASSIFICATION:
-            return BetaAccumulator
+
 
 
 class SamplingBayesianEncoder(BaseEstimator, TransformerMixin):
@@ -35,9 +30,16 @@ class SamplingBayesianEncoder(BaseEstimator, TransformerMixin):
     .. [1] Michael Larionov, Sampling Techniques in Bayesian Target Encoding, arXiv:2006.01317
     """
 
+    @staticmethod
+    def create_accumulator(task):
+        if task == 'regression':
+            return NormalGammaAccumulator
+        elif task == 'binary classification':
+            return BetaAccumulator
+
     def __init__(self, verbose=0, cols=None, drop_invariant=False, return_df=True,
-                 handle_unknown='value', handle_missing='value', random_state=None,
-                 prior_samples_ratio=1E-4, n_draws=10, mapper='identity', task=TaskType.BINARY_CLASSIFICATION):
+                 handle_unknown='value', handle_missing='value', random_state=2128506,
+                 prior_samples_ratio=1E-4, n_draws=10, mapper='identity', task='binary classification'):
         """
         :param verbose: Level of verbosity. Default: 0
         :param cols: Categorical columns to be encoded
@@ -61,7 +63,7 @@ class SamplingBayesianEncoder(BaseEstimator, TransformerMixin):
         self.mapping = None
         self.handle_unknown = handle_unknown
         self.handle_missing = handle_missing
-        self.random_state = 2128506 if random_state is None else random_state
+        self.random_state = random_state
         self.prior_samples_ratio = prior_samples_ratio
         self.feature_names = None
         self.n_draws = n_draws
@@ -204,7 +206,7 @@ class SamplingBayesianEncoder(BaseEstimator, TransformerMixin):
         mapping = {}
 
         # Calculate global statistics
-        self.accumulator = TaskType.create_accumulator(self.task)(y, self.prior_samples_ratio)
+        self.accumulator = self.create_accumulator(self.task)(y, self.prior_samples_ratio)
         prior = self.accumulator.prior
 
         for switch in self.ordinal_encoder.category_mapping:
