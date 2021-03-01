@@ -1,6 +1,3 @@
-
-
-from enum import Enum
 from typing import Tuple, Callable
 
 import numpy as np
@@ -13,12 +10,6 @@ import multiprocessing as mp
 __author__ = 'Michael Larionov'
 # https://github.com/mlarionov/categorical-encoding/blob/sampling/category_encoders/sampling_bayesian.py
 
-# class TaskType(Enum):
-#     REGRESSION = 1
-#     BINARY_CLASSIFICATION = 2
-#     MULTICLASS_CLASSIFICATION = 3
-
-
 
 
 class SamplingBayesianEncoder(BaseEstimator, TransformerMixin):
@@ -29,7 +20,9 @@ class SamplingBayesianEncoder(BaseEstimator, TransformerMixin):
     ----------
     .. [1] Michael Larionov, Sampling Techniques in Bayesian Target Encoding, arXiv:2006.01317
     """
-
+    def _more_tags(self):
+        return {'no_validation': True
+                }
     @staticmethod
     def create_accumulator(task):
         if task == 'regression':
@@ -39,7 +32,7 @@ class SamplingBayesianEncoder(BaseEstimator, TransformerMixin):
 
     def __init__(self, verbose=0, cols=None, drop_invariant=False, return_df=True,
                  handle_unknown='value', handle_missing='value', random_state=2128506,
-                 prior_samples_ratio=1E-4, n_draws=10, mapper='identity', task='binary classification'):
+                 prior_samples_ratio=1E-4, n_draws=10, mapper='identity', task='regression'):
         """
         :param verbose: Level of verbosity. Default: 0
         :param cols: Categorical columns to be encoded
@@ -56,16 +49,11 @@ class SamplingBayesianEncoder(BaseEstimator, TransformerMixin):
         self.verbose = verbose
         self.return_df = return_df
         self.drop_invariant = drop_invariant
-        self.drop_cols = []
         self.cols = cols
-        self.ordinal_encoder = None
-        self._dim = None
-        self.mapping = None
         self.handle_unknown = handle_unknown
         self.handle_missing = handle_missing
         self.random_state = random_state
         self.prior_samples_ratio = prior_samples_ratio
-        self.feature_names = None
         self.n_draws = n_draws
         self.mapper = mapper
         self.task = task
@@ -92,36 +80,36 @@ class SamplingBayesianEncoder(BaseEstimator, TransformerMixin):
 
         # If columns aren't passed, just use every string column
         if self.cols is None:
-            self.cols = util.get_obj_cols(X)
+            self._cols = util.get_obj_cols(X)
         else:
-            self.cols = util.convert_cols_to_list(self.cols)
+            self._cols = util.convert_cols_to_list(self.cols)
 
         if self.handle_missing == 'error':
-            if X[self.cols].isnull().any().any():
+            if X[self._cols].isnull().any().any():
                 raise ValueError('Columns to be encoded can not contain null')
 
-        self.ordinal_encoder = OrdinalEncoder(
+        self._ordinal_encoder = OrdinalEncoder(
             verbose=self.verbose,
-            cols=self.cols,
+            cols=self._cols,
             handle_unknown='value',
             handle_missing='value'
         )
-        self.ordinal_encoder = self.ordinal_encoder.fit(X)
-        X_ordinal = self.ordinal_encoder.transform(X)
+        self._ordinal_encoder = self._ordinal_encoder.fit(X)
+        X_ordinal = self._ordinal_encoder.transform(X)
 
         # Training
-        self.mapping = self._train(X_ordinal, y)
+        self._mapping = self._train(X_ordinal, y)
 
         X_temp = self.transform(X, override_return_df=True)
-        self.feature_names = X_temp.columns.tolist()
+        self._feature_names = X_temp.columns.tolist()
 
         # Store column names with approximately constant variance on the training data
         if self.drop_invariant:
             self.drop_cols = []
-            generated_cols = util.get_generated_cols(X, X_temp, self.cols)
+            generated_cols = util.get_generated_cols(X, X_temp, self._cols)
             self.drop_cols = [x for x in generated_cols if X_temp[x].var() <= 10e-5]
             try:
-                [self.feature_names.remove(x) for x in self.drop_cols]
+                [self._feature_names.remove(x) for x in self.drop_cols]
             except KeyError as e:
                 if self.verbose > 0:
                     print("Could not remove column from feature names."
@@ -141,7 +129,7 @@ class SamplingBayesianEncoder(BaseEstimator, TransformerMixin):
         """
 
         if self.handle_missing == 'error':
-            if X[self.cols].isnull().any().any():
+            if X[self._cols].isnull().any().any():
                 raise ValueError('Columns to be encoded can not contain null')
 
         if self._dim is None:
@@ -161,16 +149,16 @@ class SamplingBayesianEncoder(BaseEstimator, TransformerMixin):
                 raise ValueError(
                     "The length of X is " + str(X.shape[0]) + " but length of y is " + str(y.shape[0]) + ".")
 
-        if not list(self.cols):
+        if not list(self._cols):
             return X
 
         # Do not modify the input argument
         X = X.copy(deep=True)
 
-        X = self.ordinal_encoder.transform(X)
+        X = self._ordinal_encoder.transform(X)
 
         if self.handle_unknown == 'error':
-            if X[self.cols].isin([-1]).any().any():
+            if X[self._cols].isin([-1]).any().any():
                 raise ValueError('Unexpected categories found in DataFrame')
 
         # Loop over the columns and replace the nominal values with the numbers
@@ -206,14 +194,14 @@ class SamplingBayesianEncoder(BaseEstimator, TransformerMixin):
         mapping = {}
 
         # Calculate global statistics
-        self.accumulator = self.create_accumulator(self.task)(y, self.prior_samples_ratio)
-        prior = self.accumulator.prior
+        self._accumulator = self.create_accumulator(self.task)(y, self.prior_samples_ratio)
+        prior = self._accumulator.prior
 
-        for switch in self.ordinal_encoder.category_mapping:
+        for switch in self._ordinal_encoder.category_mapping:
             col = switch.get('col')
             values = switch.get('mapping')
 
-            estimate = self.accumulator.get_posterior_parameters(X, col)
+            estimate = self._accumulator.get_posterior_parameters(X, col)
 
             # Deal with special cases
             # Ignore unique columns. This helps to prevent overfitting on id-like columns
@@ -240,9 +228,9 @@ class SamplingBayesianEncoder(BaseEstimator, TransformerMixin):
         np.random.seed(random_seed)
         X = X_in.copy(deep=True)
         mapper = Mapping.create_mapper(self.mapper)
-        for col in self.cols:
+        for col in self._cols:
 
-            mapping = self.mapping[col]
+            mapping = self._mapping[col]
 
             def map_single_row(val):
 
@@ -252,7 +240,7 @@ class SamplingBayesianEncoder(BaseEstimator, TransformerMixin):
                     posterior_params = (map_instance.loc[-1] for map_instance in mapping)
                 else:
                     posterior_params = (map_instance.loc[val] for map_instance in mapping)
-                sample_result = self.accumulator.sample_single(*posterior_params)
+                sample_result = self._accumulator.sample_single(*posterior_params)
                 if type(sample_result) is not tuple:
                     sample_result = (sample_result,)
                 impute = mapper(sample_result)
@@ -285,10 +273,10 @@ class SamplingBayesianEncoder(BaseEstimator, TransformerMixin):
             A list with all feature names transformed or added.
             Note: potentially dropped features are not included!
         """
-        if not isinstance(self.feature_names, list):
+        if not isinstance(self._feature_names, list):
             raise ValueError("Estimator has to be fitted to return feature names.")
         else:
-            return self.feature_names
+            return self._feature_names
 
     def expand_y(self, y):
         """

@@ -67,6 +67,7 @@ def test_regression_mean():
 def first_element(x):
     return (x[1],)
 
+
 def test_regression_custom_mapper():
     enc = SamplingBayesianEncoder(verbose=1, n_draws=2,
                                   cols=['unique_str', 'invariant', 'underscore', 'none', 'extra', 321,
