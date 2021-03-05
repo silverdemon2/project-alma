@@ -71,3 +71,6 @@ target/
 .idea/modules.xml
 .idea/project-alma.iml
 .idea/vcs.xml
+examples/csv/adult_loo_cv.json
+examples/csv/input/cat-in-the-dat/test.csv
+examples/csv/input/cat-in-the-dat/train.csv
