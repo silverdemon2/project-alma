@@ -32,7 +32,7 @@ class SamplingBayesianEncoder(BaseEstimator, TransformerMixin):
 
     def __init__(self, verbose=0, cols=None, drop_invariant=False, return_df=True,
                  handle_unknown='value', handle_missing='value', random_state=2128506,
-                 prior_samples_ratio=1E-4, n_draws=10, mapper='identity', task='regression'):
+                 prior_samples_ratio=1E-4, n_draws=10, mapper='identity', task='binary classification'):
         """
         :param verbose: Level of verbosity. Default: 0
         :param cols: Categorical columns to be encoded
@@ -105,7 +105,6 @@ class SamplingBayesianEncoder(BaseEstimator, TransformerMixin):
 
         # Store column names with approximately constant variance on the training data
         if self.drop_invariant:
-            self.drop_cols = []
             generated_cols = util.get_generated_cols(X, X_temp, self._cols)
             self.drop_cols = [x for x in generated_cols if X_temp[x].var() <= 10e-5]
             try:
@@ -459,7 +458,7 @@ class NormalGammaAccumulator(object):
 
 class BetaAccumulator(object):
     """
-    Accumulator for Normal-Gamma distribution. Computes the parameters of the posterior distribution. Samples
+    Accumulator for Beta distribution. Computes the parameters of the posterior distribution. Samples
     from the distribution
     """
 
