@@ -26,11 +26,11 @@ Each value of the categorical variable is mapped to a target mean conditional gi
 
 Target encoding is dependent on the distribution of the target which means target encoding requires careful validation as it can be prone to overfitting.
 
-Target Encoding fails to extract information from intra-category target variable distribution apart from its mean.
+Target encoding fails to extract information from intra-category target variable distribution apart from its mean.
 
 
 
-The main motivation of Bayesian Target Encoding is to use iner-category variance in addition to the target mean in encoding categorical variables.
+The main motivation of Bayesian target encoding is to use iner-category variance in addition to the target mean in encoding categorical variables.
 
 Bayesian target encoding selects a conjugate prior for the conditional distribution of the target variable given the value of the categorical variable and updates it with the training examples to obtain a posterior distribution.
 In the encoding layer each category is encoded using the first moments of the posterior distribution.
@@ -41,7 +41,7 @@ In sampling bayesian target encoding we sample the posterior distribtion instead
 
 Source:
 
-- Michael Larionov. Sampling Techniques in Bayesian Target Encoding, 2020.
+- Michael Larionov. Sampling Techniques in Bayesian Target Encoding, 2020
 
 - https://towardsdatascience.com/target-encoding-and-bayesian-target-encoding-5c6a6c58ae8c
 
@@ -52,14 +52,16 @@ Sampling Bayesian Encoder implementation
 
 https://github.com/mlarionov/categorical-encoding/tree/sampling
 
-This repo implements Sampling bayesian target encoding techniques:
+This repo implements sampling bayesian target encoding techniques:
 
 An `EncoderWrapper` is a sampling encoder and a prediction model (Random forest, SVM...).
 
-In the fit method of the encoder the member `_accumulator` finds a prior distribution with target statistics for the entire training dataset (scale it down with a parameter)
+In the fit method of the encoder the member `_accumulator` finds a prior distribution with target statistics for the entire training dataset (scales it down with a parameter)
 and then updates a conditional posterior ditribution using conjugate priors for each value of each categorical variable
 
-The member `_accumulator corresponds to normal gamma distribution for a regression task or to beta distribution for binary classification.
+The conjugate prior is beta distribution for a binary classficiation task and normal gamma distribution for a regression task
+
+The member `_accumulator` computes the parameters of the posterior distribution and smaples
 
 The `transform` method of the encoder generates an augmented set of the training set with all categorical features encoded using samples from the posterior distribution
 
@@ -74,9 +76,9 @@ I have added the tag `no validation` because the specific unit tests in `test_sa
 - check_methods_subset_invariance
 - check_fit_idempotent
 
-The sampling encoder should bebe used with an encoderwraper. Therefore should check the EncoderWraper pass the check_estimator tests (for some predictions models).
+The sampling encoder should be used with an `EncoderWraper. Therefore we should ensure 'EncoderWrapper' pass the `check_estimator` tests for the predictions models we use.
 
-The methods `fit`, `transform` and `fit_transform` are slow for this implementation compared to other category encoders.
+The execution of the methods `fit`, `transform` and `fit_transform` is slow for this implementation compared to other category encoders.
 One of the reason could be the augmentation of the dataset. However this implementation should be optimized.
 For example the `fit` method calls `transform` to update the set of features and the set of invariant columns.
 
@@ -87,7 +89,7 @@ Experiments
 
 - https://github.com/mlarionov/sampling_bayesian_encoder
 
- I was not able to run these experiments with my computer or with google-collab (memory issue problem, "too slow"...).
+ I was not able to run these experiments with my computer or with google-collab (memory issue problem, execution too slow...).
 
 The file `adult_classif` corresponds to one of these experiments. The corresponding dataset is available here: https://archive.ics.uci.edu/ml/machine-learning-databases/adult/adult.data
 
@@ -95,13 +97,13 @@ The file `adult_classif` corresponds to one of these experiments. The correspond
 - https://www.kaggle.com/subinium/11-categorical-encoders-and-benchmark
 
 
-This notebook benchmarks different categorical encoders on the dataset of the competition https://www.kaggle.com/c/cat-in-the-dat
+This notebook benchmarks different categorical encoders on the dataset of the kaggle https://www.kaggle.com/c/cat-in-the-dat
 
 The dataset of the competition contains categorical features with different modalities.
 
-I've modified the code to include the sampling bayesian encoding in the benchmark and to fit the transformer on each training subset of the cross-validation (and not on the whole training subset)
+The code has been modified to include the sampling bayesian encoding in the benchmark and to fit the transformer on each training subset of the cross-validation (and not on the whole training subset).
 
-To run this experiment run the file `benchmark.py` (or execute the method run_cat_in_the_cat_xp)
+To run this experiment, run the file `benchmark.py` (or execute the method run_cat_in_the_cat_xp)
 
 The sampling encoder outperforms the other encoders on this experiment.
 
