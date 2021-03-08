@@ -12,22 +12,23 @@ from skl_sampling_bayesian_transformer import SamplingBayesianEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score as auc
 from sklearn.linear_model import LogisticRegression
+from sklearn.impute import SimpleImputer
 
 # https://www.kaggle.com/subinium/11-categorical-encoders-and-benchmark
 from skl_sampling_bayesian_transformer.sampling_bayesian_encoder import EncoderWrapper
 
 
-def score_all_encoders_lr(train, target, encoders, feature_list, sampling_encoder):
+def score_all_encoders_lr(train, target, encoders, sampling_encoder):
     X_train, X_val, y_train, y_val = train_test_split(train, target, test_size=0.2, random_state=97)
     for encoder in encoders:
-        print_score_lr_encoder(encoder, feature_list, X_train, X_val, y_train, y_val)
+        print_score_lr_encoder(encoder, X_train, X_val, y_train, y_val)
     print_score_lr_sampling(sampling_encoder, X_train, X_val, y_train, y_val)
 
 
-def print_score_lr_encoder(encoder, feature_list, X_train, X_val, y_train, y_val):
+def print_score_lr_encoder(encoder, X_train, X_val, y_train, y_val):
     print("Test {} : ".format(str(encoder).split('(')[0]), end=" ")
-    train_enc = encoder.fit_transform(X_train[feature_list], y_train)
-    val_enc = encoder.transform(X_val[feature_list])
+    train_enc = encoder.fit_transform(X_train, y_train)
+    val_enc = encoder.transform(X_val)
     lr = LogisticRegression(C=0.1, solver="lbfgs", max_iter=1000)
     lr.fit(train_enc, y_train)
     lr_pred = lr.predict_proba(val_enc)[:, 1]
@@ -43,40 +44,6 @@ def print_score_lr_sampling(encoder, X_train, X_val, y_train, y_val):
     lr_pred = ew.predict_proba(X_val)
     score = auc(y_val, lr_pred)
     print(" Sampling bayesian score: ", score)
-
-
-def run_cat_in_the_cat_xp():
-    train_raw = pd.read_csv('csv/input/cat-in-the-dat/train.csv')
-    test_raw = pd.read_csv('csv/input/cat-in-the-dat/test.csv')
-    target = train_raw['target']
-    train_raw.drop(['target', 'id'], axis=1, inplace=True)
-    test_raw.drop('id', axis=1, inplace=True)
-
-
-    feature_list = list(train_raw.columns)
-    encoder_list = [OrdinalEncoder(), WOEEncoder(), TargetEncoder(), MEstimateEncoder(), JamesSteinEncoder(),
-                    LeaveOneOutEncoder(), CatBoostEncoder()]
-    sampling_encoder = SamplingBayesianEncoder(cols=feature_list, n_draws=10)
-    score_all_encoders_lr(train_raw, target, encoder_list, feature_list, sampling_encoder)
-
-    ## Cross val xp
-    lr_params = {'solver': 'lbfgs', 'C': 0.1}
-    results = list()
-    train = train_raw[feature_list]
-    test = test_raw[feature_list]
-
-    for encoder in encoder_list:
-        result = run_cv_lr(train, test, target, encoder, lr_params)
-        results.append(result)
-
-    sampling_encoder = SamplingBayesianEncoder(cols=feature_list, n_draws=10)
-    result = run_cv_encoding_wraper(train, test, target, sampling_encoder, lr_params)
-    results.append(result)
-
-    results = pd.DataFrame(results)
-    results['cv_mean'] = results['cv'].apply(lambda l: np.mean(l))
-    results['cv_std'] = results['cv'].apply(lambda l: np.std(l))
-    print(results[['label', 'cv_mean', 'cv_std']].head(9))
 
 
 def run_cv_encoding_wraper(train, test, target, sampling_encoder, lr_params):
@@ -147,5 +114,33 @@ def run_cv_lr(train, test, target, encoder, lr_params):
     return results
 
 
+def run_credit_xp():
+    train_raw = pd.read_csv('csv/input/credit/application_train.csv')
+    test_raw = pd.read_csv('csv/input/credit/application_test.csv')
+
+    train_raw = train_raw.dropna()
+    test_raw = test_raw.dropna()
+
+    target = train_raw["TARGET"] == 1
+    train_raw.drop(['TARGET', 'SK_ID_CURR'], axis=1, inplace=True)
+    test_raw.drop('SK_ID_CURR', axis=1, inplace=True)
+    train_raw.dropna()
+    test_raw.dropna()
+    cat_feature_list = ['NAME_CONTRACT_TYPE', 'CODE_GENDER', 'FLAG_OWN_CAR', 'FLAG_OWN_REALTY',
+                        "REGION_RATING_CLIENT", "REGION_RATING_CLIENT_W_CITY", "NAME_TYPE_SUITE",
+                        'NAME_TYPE_SUITE', 'NAME_INCOME_TYPE', 'NAME_EDUCATION_TYPE',
+                        'NAME_FAMILY_STATUS', 'NAME_HOUSING_TYPE', 'OCCUPATION_TYPE',
+                        'WEEKDAY_APPR_PROCESS_START', 'ORGANIZATION_TYPE', 'FONDKAPREMONT_MODE',
+                        'HOUSETYPE_MODE', 'WALLSMATERIAL_MODE', 'EMERGENCYSTATE_MODE']
+
+    encoder_list = [OrdinalEncoder(cols=cat_feature_list), WOEEncoder(cols=cat_feature_list),
+                    TargetEncoder(cols=cat_feature_list), MEstimateEncoder(cols=cat_feature_list),
+                    JamesSteinEncoder(cols=cat_feature_list),
+                    LeaveOneOutEncoder(cols=cat_feature_list), CatBoostEncoder(cols=cat_feature_list)]
+    sampling_encoder = SamplingBayesianEncoder(cols=cat_feature_list, n_draws=10)
+
+    score_all_encoders_lr(train_raw, target, encoder_list, sampling_encoder)
+
+
 if __name__ == '__main__':
-    run_cat_in_the_cat_xp()
+    run_credit_xp()

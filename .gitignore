@@ -74,3 +74,5 @@ target/
 examples/csv/adult_loo_cv.json
 examples/csv/input/cat-in-the-dat/test.csv
 examples/csv/input/cat-in-the-dat/train.csv
+examples/csv/input/credit/application_test.csv
+examples/csv/input/credit/application_train.csv
